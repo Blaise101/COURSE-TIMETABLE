@@ -450,11 +450,11 @@ export default function App() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">
-                        Location
+                        Section
                       </label>
                       <input
                         type="text"
-                        placeholder="e.g. Room 302"
+                        placeholder="e.g. Section A"
                         className="w-full bg-neutral-50 px-4 py-3 rounded-xl border border-neutral-200 focus:border-indigo-500 transition-all outline-none"
                         value={newClass.location}
                         onChange={(e) =>
