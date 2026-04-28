@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
+import { Analytics } from "@vercel/analytics/react";
+
 // --- Types ---
 
 type Day = "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday";
