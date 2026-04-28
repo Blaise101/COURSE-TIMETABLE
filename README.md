@@ -27,4 +27,4 @@ A simple tool for managing and visualizing course timetables for Blaise101. This
 
 Contributions are welcome! Please fork the repo and submit a pull request.
 
-For usage, visit the https://example.com/blaise101.
+For usage, visit the https://schedulewithblaise.vercel.app/.
