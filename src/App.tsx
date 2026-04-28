@@ -146,6 +146,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-900 font-sans selection:bg-indigo-100 selection:text-indigo-900">
+      <Analytics />
       {/* Header */}
       <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-neutral-200 px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
         <div className="flex items-center gap-3">
