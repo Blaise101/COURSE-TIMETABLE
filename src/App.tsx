@@ -178,7 +178,7 @@ export default function App() {
 
       <main className="max-w-[1600px] mx-auto p-4 md:p-8">
         {/* Statistics/Info Bar */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8 print:hidden">
           <div className="bg-white p-5 rounded-2xl border border-neutral-200 shadow-sm flex items-center gap-4">
             <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center">
               <Info size={22} />
@@ -193,9 +193,12 @@ export default function App() {
         </div>
 
         {/* Timetable Grid */}
-        <div className="bg-white rounded-3xl border border-neutral-200 shadow-xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <div className="min-w-[1000px] grid grid-cols-[80px_repeat(5,1fr)]">
+        <div
+          id="timetable-to-print"
+          className="bg-white rounded-3xl border border-neutral-200 shadow-xl overflow-hidden print:shadow-none print:border-none print:rounded-none"
+        >
+          <div className="overflow-x-auto print:overflow-visible">
+            <div className="min-w-[1000px] grid grid-cols-[80px_repeat(5,1fr)] print:min-w-0">
               {/* Top Row: Days */}
               <div className="border-b border-r border-neutral-100 bg-neutral-50/50"></div>
               {DAYS.map((day) => (
@@ -500,10 +503,48 @@ export default function App() {
       {/* Print Styles */}
       <style>{`
         @media print {
-          header, footer, .stats-bar, button { display: none !important; }
-          body { background-color: white !important; }
-          .min-w-[1000px] { min-width: 100% !important; border: 1px solid #eee; }
-          main { padding: 0 !important; }
+          @page {
+            size: landscape;
+            margin: 0;
+          }
+          /* Hide EVERYTHING by default */
+          body * {
+            visibility: hidden;
+          }
+          /* Only show the timetable and its children */
+          #timetable-to-print, #timetable-to-print * {
+            visibility: visible;
+          }
+          #timetable-to-print {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100% !important;
+            height: 100vh !important;
+            margin: 0 !important;
+            padding: 1cm !important;
+            border: none !important;
+            display: block !important;
+          }
+          .min-w-[1000px] {
+            min-width: 100% !important;
+            width: 100% !important;
+            height: calc(100vh - 2cm) !important;
+            display: grid !important;
+            grid-template-columns: 60px repeat(5, 1fr) !important;
+          }
+          .h-[840px] {
+            height: 100% !important;
+          }
+          /* Ensure colors print */
+          .bg-neutral-50\\/50 {
+            background-color: #f9fafb !important;
+            -webkit-print-color-adjust: exact;
+          }
+          [class*="bg-"] {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
         }
       `}</style>
     </div>
