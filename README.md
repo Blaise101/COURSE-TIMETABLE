@@ -1,20 +1,30 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Blaise101 Course Timetable
 
-# Run and deploy your AI Studio app
+## Description
 
-This contains everything you need to run your app locally.
+A simple tool for managing and visualizing course timetables for Blaise101. This project helps students organize their schedules efficiently.
 
-View your app in AI Studio: https://ai.studio/apps/c104b206-9670-4067-bf1d-42bfb9823356
+## Features
 
-## Run Locally
+- Add, edit, and delete courses
+- View timetable in a weekly grid
+- Export to PDF or CSV
+- Responsive design for mobile and desktop
 
-**Prerequisites:**  Node.js
+## Installation
 
+1. Clone the repository: `https://github.com/Blaise101/COURSE-TIMETABLE`
+2. Install dependencies: `npm install`
+3. Run the app: `npm start`
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## Usage
+
+- Open the app in your browser at `http://localhost:3000`
+- Add a new course by clicking "Add Course" and filling in details like name, time, and day.
+- View your timetable on the main dashboard.
+
+## Contributing
+
+Contributions are welcome! Please fork the repo and submit a pull request.
+
+For usage, visit the https://example.com/blaise101.

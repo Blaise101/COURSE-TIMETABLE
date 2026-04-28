@@ -1,86 +1,97 @@
-import { useState, useEffect, FormEvent } from 'react';
-import { 
-  Plus, 
-  Trash2, 
+import { useState, useEffect, FormEvent } from "react";
+import {
+  Plus,
+  Trash2,
   Edit2,
-  Clock, 
-  MapPin, 
-  Calendar, 
-  Download, 
+  Clock,
+  MapPin,
+  Calendar,
+  Download,
   X,
-  Info
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+  Info,
+  User,
+} from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 
 // --- Types ---
 
-type Day = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday';
+type Day = "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday";
 
 interface ClassSession {
   id: string;
   subject: string;
   day: Day;
   startTime: string; // HH:mm
-  endTime: string;   // HH:mm
+  endTime: string; // HH:mm
   location: string;
   instructor: string;
   color: string;
 }
 
-const DAYS: Day[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+const DAYS: Day[] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
 const COLORS = [
-  'bg-slate-500', 'bg-red-500', 'bg-orange-500', 'bg-amber-500', 
-  'bg-emerald-500', 'bg-teal-500', 'bg-cyan-500', 'bg-sky-500', 
-  'bg-indigo-500', 'bg-violet-500', 'bg-purple-500', 'bg-fuchsia-500', 
-  'bg-pink-500', 'bg-rose-500'
+  "bg-slate-500",
+  "bg-red-500",
+  "bg-orange-500",
+  "bg-amber-500",
+  "bg-emerald-500",
+  "bg-teal-500",
+  "bg-cyan-500",
+  "bg-sky-500",
+  "bg-indigo-500",
+  "bg-violet-500",
+  "bg-purple-500",
+  "bg-fuchsia-500",
+  "bg-pink-500",
+  "bg-rose-500",
 ];
 
 // --- Utilities ---
 
 const timeToMinutes = (time: string) => {
-  const [hours, minutes] = time.split(':').map(Number);
+  const [hours, minutes] = time.split(":").map(Number);
   return hours * 60 + minutes;
 };
 
 const minutesToPosition = (minutes: number, startHour: number) => {
-  return minutes - (startHour * 60);
+  return minutes - startHour * 60;
 };
 
 // --- Components ---
 
 export default function App() {
   const [classes, setClasses] = useState<ClassSession[]>(() => {
-    const saved = localStorage.getItem('timetable_classes');
+    const saved = localStorage.getItem("timetable_classes");
     return saved ? JSON.parse(saved) : [];
   });
 
   const [isAddingMode, setIsAddingMode] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [newClass, setNewClass] = useState<Omit<ClassSession, 'id'>>({
-    subject: '',
-    day: 'Monday',
-    startTime: '09:00',
-    endTime: '10:30',
-    location: '',
-    instructor: '',
-    color: 'bg-indigo-500'
+  const [newClass, setNewClass] = useState<Omit<ClassSession, "id">>({
+    subject: "",
+    day: "Monday",
+    startTime: "09:00",
+    endTime: "10:30",
+    location: "",
+    instructor: "",
+    color: "bg-indigo-500",
   });
 
   // Persist to local storage
   useEffect(() => {
-    localStorage.setItem('timetable_classes', JSON.stringify(classes));
+    localStorage.setItem("timetable_classes", JSON.stringify(classes));
   }, [classes]);
 
   const resetForm = () => {
     setNewClass({
-      subject: '',
-      day: 'Monday',
-      startTime: '09:00',
-      endTime: '10:30',
-      location: '',
-      instructor: '',
-      color: 'bg-indigo-500'
+      subject: "",
+      day: "Monday",
+      startTime: "09:00",
+      endTime: "10:30",
+      location: "",
+      instructor: "",
+      color: "bg-indigo-500",
     });
     setEditingId(null);
     setIsAddingMode(false);
@@ -88,14 +99,18 @@ export default function App() {
 
   const handleSaveClass = (e: FormEvent) => {
     e.preventDefault();
-    
+
     if (editingId) {
-      setClasses(classes.map(c => c.id === editingId ? { ...newClass, id: editingId } : c));
+      setClasses(
+        classes.map((c) =>
+          c.id === editingId ? { ...newClass, id: editingId } : c,
+        ),
+      );
     } else {
       const id = crypto.randomUUID();
       setClasses([...classes, { ...newClass, id }]);
     }
-    
+
     resetForm();
   };
 
@@ -107,22 +122,25 @@ export default function App() {
       endTime: c.endTime,
       location: c.location,
       instructor: c.instructor,
-      color: c.color
+      color: c.color,
     });
     setEditingId(c.id);
     setIsAddingMode(true);
   };
 
   const removeClass = (id: string) => {
-    if (confirm('Are you sure you want to remove this class?')) {
-      setClasses(classes.filter(c => c.id !== id));
+    if (confirm("Are you sure you want to remove this class?")) {
+      setClasses(classes.filter((c) => c.id !== id));
     }
   };
 
   const startHour = 8; // 8 AM
-  const endHour = 20;  // 8 PM
+  const endHour = 20; // 8 PM
 
-  const hours = Array.from({ length: endHour - startHour + 1 }, (_, i) => startHour + i);
+  const hours = Array.from(
+    { length: endHour - startHour + 1 },
+    (_, i) => startHour + i,
+  );
 
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-900 font-sans selection:bg-indigo-100 selection:text-indigo-900">
@@ -134,19 +152,21 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-xl font-bold tracking-tight">ClassFlow</h1>
-            <p className="text-xs text-neutral-500 font-medium uppercase tracking-wider">Academic Timetable</p>
+            <p className="text-xs text-neutral-500 font-medium uppercase tracking-wider">
+              Academic Timetable
+            </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <button 
+          <button
             onClick={() => window.print()}
             className="p-2.5 rounded-full hover:bg-neutral-100 transition-colors text-neutral-600"
             title="Print Timetable"
           >
             <Download size={20} />
           </button>
-          <button 
+          <button
             onClick={() => setIsAddingMode(true)}
             className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-full font-semibold transition-all shadow-md shadow-indigo-100 active:scale-95"
           >
@@ -164,7 +184,9 @@ export default function App() {
               <Info size={22} />
             </div>
             <div>
-              <p className="text-sm text-neutral-500 font-medium">Total Classes</p>
+              <p className="text-sm text-neutral-500 font-medium">
+                Total Classes
+              </p>
               <p className="text-2xl font-bold">{classes.length}</p>
             </div>
           </div>
@@ -177,7 +199,10 @@ export default function App() {
               {/* Top Row: Days */}
               <div className="border-b border-r border-neutral-100 bg-neutral-50/50"></div>
               {DAYS.map((day) => (
-                <div key={day} className="py-4 text-center border-b border-neutral-100 font-bold text-sm tracking-wide bg-neutral-50/50 text-neutral-600">
+                <div
+                  key={day}
+                  className="py-4 text-center border-b border-neutral-100 font-bold text-sm tracking-wide bg-neutral-50/50 text-neutral-600"
+                >
                   {day}
                 </div>
               ))}
@@ -185,8 +210,8 @@ export default function App() {
               {/* Day Columns */}
               <div className="border-r border-neutral-100 relative h-[840px]">
                 {hours.map((hour) => (
-                  <div 
-                    key={hour} 
+                  <div
+                    key={hour}
                     className="absolute w-full text-right pr-3 font-mono text-[10px] text-neutral-400 font-medium"
                     style={{ top: `${(hour - startHour) * 60 + 10}px` }}
                   >
@@ -196,11 +221,14 @@ export default function App() {
               </div>
 
               {DAYS.map((day) => (
-                <div key={day} className="relative h-[840px] border-r last:border-r-0 border-neutral-100 bg-grid-pattern">
+                <div
+                  key={day}
+                  className="relative h-[840px] border-r last:border-r-0 border-neutral-100 bg-grid-pattern"
+                >
                   {/* Grid Lines */}
                   {hours.map((hour) => (
-                    <div 
-                      key={hour} 
+                    <div
+                      key={hour}
                       className="absolute w-full h-[1px] bg-neutral-50"
                       style={{ top: `${(hour - startHour) * 60}px` }}
                     />
@@ -224,20 +252,32 @@ export default function App() {
                             exit={{ opacity: 0, scale: 0.9 }}
                             whileHover={{ scale: 1.02, zIndex: 10 }}
                             className={`absolute left-1 right-1 rounded-lg p-3 ${c.color} text-white shadow-lg shadow-black/10 flex flex-col gap-1 overflow-hidden group cursor-pointer`}
-                            style={{ top: `${top}px`, height: `${height}px`, zIndex: 1 }}
+                            style={{
+                              top: `${top}px`,
+                              height: `${height}px`,
+                              zIndex: 1,
+                            }}
                             onClick={() => handleEditClass(c)}
                           >
                             <div className="flex justify-between items-start">
-                              <h3 className="font-bold text-xs truncate leading-tight pr-4">{c.subject}</h3>
+                              <h3 className="font-bold text-xs truncate leading-tight pr-4">
+                                {c.subject}
+                              </h3>
                               <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button 
-                                  onClick={(e) => { e.stopPropagation(); handleEditClass(c); }}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditClass(c);
+                                  }}
                                   className="p-1 hover:bg-white/20 rounded"
                                 >
                                   <Edit2 size={12} />
                                 </button>
-                                <button 
-                                  onClick={(e) => { e.stopPropagation(); removeClass(c.id); }}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeClass(c.id);
+                                  }}
                                   className="p-1 hover:bg-white/20 rounded"
                                 >
                                   <Trash2 size={12} />
@@ -247,12 +287,22 @@ export default function App() {
                             <div className="flex flex-col gap-0.5 mt-auto">
                               <div className="flex items-center gap-1 text-[10px] opacity-90 font-medium">
                                 <Clock size={10} />
-                                <span>{c.startTime} - {c.endTime}</span>
+                                <span>
+                                  {c.startTime} - {c.endTime}
+                                </span>
                               </div>
                               {c.location && (
                                 <div className="flex items-center gap-1 text-[10px] opacity-90 font-medium">
                                   <MapPin size={10} />
                                   <span className="truncate">{c.location}</span>
+                                </div>
+                              )}
+                              {c.instructor && (
+                                <div className="flex items-center gap-1 text-[10px] opacity-90 font-medium">
+                                  <User size={10} />
+                                  <span className="truncate">
+                                    {c.instructor}
+                                  </span>
                                 </div>
                               )}
                             </div>
@@ -271,14 +321,14 @@ export default function App() {
       <AnimatePresence>
         {isAddingMode && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={resetForm}
               className="absolute inset-0 bg-neutral-900/60 backdrop-blur-sm"
             />
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 50, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 50, scale: 0.95 }}
@@ -286,8 +336,10 @@ export default function App() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="px-8 py-6 border-b border-neutral-100 flex justify-between items-center bg-white">
-                <h2 className="text-xl font-bold">{editingId ? 'Edit Session' : 'Add New Session'}</h2>
-                <button 
+                <h2 className="text-xl font-bold">
+                  {editingId ? "Edit Session" : "Add New Session"}
+                </h2>
+                <button
                   onClick={resetForm}
                   className="p-2 hover:bg-neutral-100 rounded-full transition-colors text-neutral-500"
                 >
@@ -295,40 +347,63 @@ export default function App() {
                 </button>
               </div>
 
-              <form onSubmit={handleSaveClass} className="p-8 space-y-6">
+              <form
+                onSubmit={handleSaveClass}
+                className="p-8 space-y-6"
+              >
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Subject Name</label>
-                    <input 
+                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">
+                      Subject Name
+                    </label>
+                    <input
                       required
-                      type="text" 
+                      type="text"
                       placeholder="e.g. Advanced Mathematics"
                       className="w-full bg-neutral-50 px-4 py-3 rounded-xl border border-neutral-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 transition-all outline-none"
                       value={newClass.subject}
-                      onChange={(e) => setNewClass({ ...newClass, subject: e.target.value })}
+                      onChange={(e) =>
+                        setNewClass({ ...newClass, subject: e.target.value })
+                      }
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Day</label>
-                      <select 
+                      <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">
+                        Day
+                      </label>
+                      <select
                         className="w-full bg-neutral-50 px-4 py-3 rounded-xl border border-neutral-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 transition-all outline-none"
                         value={newClass.day}
-                        onChange={(e) => setNewClass({ ...newClass, day: e.target.value as Day })}
+                        onChange={(e) =>
+                          setNewClass({
+                            ...newClass,
+                            day: e.target.value as Day,
+                          })
+                        }
                       >
-                        {DAYS.map(day => <option key={day} value={day}>{day}</option>)}
+                        {DAYS.map((day) => (
+                          <option
+                            key={day}
+                            value={day}
+                          >
+                            {day}
+                          </option>
+                        ))}
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Color</label>
+                      <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">
+                        Color
+                      </label>
                       <div className="flex flex-wrap gap-2 pt-1">
-                        {COLORS.slice(0, 10).map(color => (
+                        {COLORS.slice(0, 10).map((color) => (
                           <button
                             key={color}
                             type="button"
                             onClick={() => setNewClass({ ...newClass, color })}
-                            className={`w-6 h-6 rounded-full ${color} transition-transform ${newClass.color === color ? 'scale-125 ring-2 ring-offset-2 ring-indigo-500' : 'hover:scale-110'}`}
+                            className={`w-6 h-6 rounded-full ${color} transition-transform ${newClass.color === color ? "scale-125 ring-2 ring-offset-2 ring-indigo-500" : "hover:scale-110"}`}
                           />
                         ))}
                       </div>
@@ -337,57 +412,79 @@ export default function App() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Start Time</label>
-                      <input 
+                      <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">
+                        Start Time
+                      </label>
+                      <input
                         required
-                        type="time" 
+                        type="time"
                         className="w-full bg-neutral-50 px-4 py-3 rounded-xl border border-neutral-200 focus:border-indigo-500 transition-all outline-none"
                         value={newClass.startTime}
-                        onChange={(e) => setNewClass({ ...newClass, startTime: e.target.value })}
+                        onChange={(e) =>
+                          setNewClass({
+                            ...newClass,
+                            startTime: e.target.value,
+                          })
+                        }
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">End Time</label>
-                      <input 
+                      <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">
+                        End Time
+                      </label>
+                      <input
                         required
-                        type="time" 
+                        type="time"
                         className="w-full bg-neutral-50 px-4 py-3 rounded-xl border border-neutral-200 focus:border-indigo-500 transition-all outline-none"
                         value={newClass.endTime}
-                        onChange={(e) => setNewClass({ ...newClass, endTime: e.target.value })}
+                        onChange={(e) =>
+                          setNewClass({ ...newClass, endTime: e.target.value })
+                        }
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Location</label>
-                      <input 
-                        type="text" 
+                      <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">
+                        Location
+                      </label>
+                      <input
+                        type="text"
                         placeholder="e.g. Room 302"
                         className="w-full bg-neutral-50 px-4 py-3 rounded-xl border border-neutral-200 focus:border-indigo-500 transition-all outline-none"
                         value={newClass.location}
-                        onChange={(e) => setNewClass({ ...newClass, location: e.target.value })}
+                        onChange={(e) =>
+                          setNewClass({ ...newClass, location: e.target.value })
+                        }
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Instructor</label>
-                      <input 
-                        type="text" 
+                      <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">
+                        Instructor
+                      </label>
+                      <input
+                        type="text"
                         placeholder="e.g. Dr. Smith"
                         className="w-full bg-neutral-50 px-4 py-3 rounded-xl border border-neutral-200 focus:border-indigo-500 transition-all outline-none"
                         value={newClass.instructor}
-                        onChange={(e) => setNewClass({ ...newClass, instructor: e.target.value })}
+                        onChange={(e) =>
+                          setNewClass({
+                            ...newClass,
+                            instructor: e.target.value,
+                          })
+                        }
                       />
                     </div>
                   </div>
                 </div>
 
                 <div className="pt-4">
-                  <button 
+                  <button
                     type="submit"
                     className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-indigo-100 active:scale-[0.98]"
                   >
-                    {editingId ? 'Update Session' : 'Save Session'}
+                    {editingId ? "Update Session" : "Save Session"}
                   </button>
                 </div>
               </form>
