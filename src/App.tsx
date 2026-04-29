@@ -132,7 +132,7 @@ export default function App() {
 
   const removeClass = (id: string) => {
     if (confirm("Are you sure you want to remove this class?")) {
-      setClasses(classes.filter((c) => c.id !== id));
+      setClasses(classes.filter((c: { id: string }) => c.id !== id));
     }
   };
 
@@ -179,7 +179,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-[1600px] mx-auto p-4 md:p-8">
+      <main className="max-w-400 mx-auto p-4 md:p-8">
         {/* Statistics/Info Bar */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8 print:hidden">
           <div className="bg-white p-5 rounded-2xl border border-neutral-200 shadow-sm flex items-center gap-4">
@@ -201,7 +201,7 @@ export default function App() {
           className="bg-white rounded-3xl border border-neutral-200 shadow-xl overflow-hidden print:shadow-none print:border-none print:rounded-none"
         >
           <div className="overflow-x-auto print:overflow-visible">
-            <div className="min-w-[1000px] grid grid-cols-[80px_repeat(5,1fr)] print:min-w-0">
+            <div className="min-w-250 grid grid-cols-[80px_repeat(5,1fr)] print:min-w-0">
               {/* Top Row: Days */}
               <div className="border-b border-r border-neutral-100 bg-neutral-50/50"></div>
               {DAYS.map((day) => (
@@ -214,7 +214,7 @@ export default function App() {
               ))}
 
               {/* Day Columns */}
-              <div className="border-r border-neutral-100 relative h-[840px]">
+              <div className="border-r border-neutral-100 relative h-210">
                 {hours.map((hour) => (
                   <div
                     key={hour}
@@ -229,13 +229,13 @@ export default function App() {
               {DAYS.map((day) => (
                 <div
                   key={day}
-                  className="relative h-[840px] border-r last:border-r-0 border-neutral-100 bg-grid-pattern"
+                  className="relative h-210 border-r last:border-r-0 border-neutral-100 bg-grid-pattern"
                 >
                   {/* Grid Lines */}
                   {hours.map((hour) => (
                     <div
                       key={hour}
-                      className="absolute w-full h-[1px] bg-neutral-50"
+                      className="absolute w-full h-px bg-neutral-50"
                       style={{ top: `${(hour - startHour) * 60}px` }}
                     />
                   ))}
@@ -243,8 +243,8 @@ export default function App() {
                   {/* Classes for this day */}
                   <AnimatePresence>
                     {classes
-                      .filter((c) => c.day === day)
-                      .map((c) => {
+                      .filter((c: { day: string }) => c.day === day)
+                      .map((c: ClassSession) => {
                         const startMin = timeToMinutes(c.startTime);
                         const endMin = timeToMinutes(c.endTime);
                         const top = minutesToPosition(startMin, startHour);
