@@ -308,7 +308,7 @@ export default function App() {
 
       {/* Main Content Area */}
       <div className="sm:pl-24 pb-24 sm:pb-8">
-        <header className="px-6 py-8 flex justify-between items-end max-w-[1600px] mx-auto print:hidden">
+        <header className="px-6 py-8 flex justify-between items-end max-w-400 mx-auto print:hidden">
           <div>
             <h1 className="text-3xl font-black tracking-tight text-neutral-900">
               {view === "dashboard" && "Student Hub"}
@@ -340,7 +340,7 @@ export default function App() {
           </div>
         </header>
 
-        <main className="max-w-[1600px] mx-auto px-6">
+        <main className="max-w-400 mx-auto px-6">
           <AnimatePresence mode="wait">
             {view === "dashboard" && (
               <motion.div
@@ -462,7 +462,7 @@ export default function App() {
                 id="timetable-to-print"
               >
                 <div className="overflow-x-auto print:overflow-visible">
-                  <div className="min-w-[1000px] grid grid-cols-[80px_repeat(5,1fr)] print:min-w-0">
+                  <div className="min-w-250 grid grid-cols-[80px_repeat(5,1fr)] print:min-w-0">
                     <div className="border-b border-r border-neutral-100 bg-neutral-50/50"></div>
                     {CLASS_DAYS.map((day) => (
                       <div
@@ -473,7 +473,7 @@ export default function App() {
                       </div>
                     ))}
 
-                    <div className="border-r border-neutral-100 relative h-[840px] bg-neutral-50/20">
+                    <div className="border-r border-neutral-100 relative h-210 bg-neutral-50/20">
                       {hoursClasses.map((hour) => (
                         <div
                           key={hour}
@@ -490,12 +490,12 @@ export default function App() {
                     {CLASS_DAYS.map((day) => (
                       <div
                         key={day}
-                        className="relative h-[840px] border-r last:border-r-0 border-neutral-100 bg-grid-pattern"
+                        className="relative h-210 border-r last:border-r-0 border-neutral-100 bg-grid-pattern"
                       >
                         {hoursClasses.map((hour) => (
                           <div
                             key={hour}
-                            className="absolute w-full h-[1px] bg-neutral-50"
+                            className="absolute w-full h-px bg-neutral-50"
                             style={{
                               top: `${(hour - startHourClasses) * 60}px`,
                             }}
@@ -579,7 +579,7 @@ export default function App() {
                 className="bg-white rounded-[2.5rem] border border-neutral-200 shadow-2xl overflow-hidden print:shadow-none print:border-none"
               >
                 <div className="overflow-x-auto print:overflow-visible">
-                  <div className="min-w-[1400px] grid grid-cols-[80px_repeat(7,1fr)] print:min-w-0">
+                  <div className="min-w-350 grid grid-cols-[80px_repeat(7,1fr)] print:min-w-0">
                     <div className="border-b border-r border-neutral-100 bg-neutral-50/50"></div>
                     {FULL_WEEK_DAYS.map((day) => (
                       <div
@@ -590,7 +590,7 @@ export default function App() {
                       </div>
                     ))}
 
-                    <div className="border-r border-neutral-100 relative h-[1080px] bg-neutral-50/20">
+                    <div className="border-r border-neutral-100 relative h-270 bg-neutral-50/20">
                       {hoursPlanner.map((hour) => (
                         <div
                           key={hour}
@@ -607,12 +607,12 @@ export default function App() {
                     {FULL_WEEK_DAYS.map((day) => (
                       <div
                         key={day}
-                        className="relative h-[1080px] border-r last:border-r-0 border-neutral-100 bg-grid-pattern"
+                        className="relative h-270 border-r last:border-r-0 border-neutral-100 bg-grid-pattern"
                       >
                         {hoursPlanner.map((hour) => (
                           <div
                             key={hour}
-                            className="absolute w-full h-[1px] bg-neutral-50"
+                            className="absolute w-full h-px bg-neutral-50"
                             style={{
                               top: `${(hour - startHourPlanner) * 60}px`,
                             }}
@@ -690,7 +690,7 @@ export default function App() {
       {/* Add Modal */}
       <AnimatePresence>
         {isAddingMode && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
