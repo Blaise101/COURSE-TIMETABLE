@@ -121,9 +121,11 @@ export default function App() {
   const [currentDayInPlanner, setCurrentDayInPlanner] = useState<Day>("Monday");
 
   // Form State (Shared for simplicity or separate if needed)
-  const [newClass, setNewClass] = useState<Omit<ClassSession, "id">>({
+  const [newClass, setNewClass] = useState<
+    Omit<ClassSession, "id" | "day"> & { days: Day[] }
+  >({
     subject: "",
-    day: "Monday",
+    days: ["Monday"],
     startTime: "09:00",
     endTime: "10:30",
     location: "",
@@ -132,10 +134,10 @@ export default function App() {
   });
 
   const [newPlannerEvent, setNewPlannerEvent] = useState<
-    Omit<PlannerEvent, "id">
+    Omit<PlannerEvent, "id" | "day"> & { days: Day[] }
   >({
     title: "",
-    day: "Monday",
+    days: ["Monday"],
     startTime: "08:00",
     endTime: "09:00",
     category: "Study",
@@ -154,7 +156,7 @@ export default function App() {
   const resetForm = () => {
     setNewClass({
       subject: "",
-      day: "Monday",
+      days: ["Monday"],
       startTime: "09:00",
       endTime: "10:30",
       location: "",
@@ -163,7 +165,7 @@ export default function App() {
     });
     setNewPlannerEvent({
       title: "",
-      day: "Monday",
+      days: ["Monday"],
       startTime: "08:00",
       endTime: "09:00",
       category: "Study",
@@ -178,12 +180,18 @@ export default function App() {
     if (editingId) {
       setClasses(
         classes.map((c) =>
-          c.id === editingId ? { ...newClass, id: editingId } : c,
+          c.id === editingId
+            ? { ...newClass, day: newClass.days[0], id: editingId }
+            : c,
         ),
       );
     } else {
-      const id = crypto.randomUUID();
-      setClasses([...classes, { ...newClass, id }]);
+      const newEntries = newClass.days.map((day) => ({
+        ...newClass,
+        day,
+        id: crypto.randomUUID(),
+      }));
+      setClasses([...classes, ...newEntries]);
     }
     resetForm();
   };
@@ -193,12 +201,22 @@ export default function App() {
     if (editingId) {
       setPlannerEvents(
         plannerEvents.map((p) =>
-          p.id === editingId ? { ...newPlannerEvent, id: editingId } : p,
+          p.id === editingId
+            ? {
+                ...newPlannerEvent,
+                day: newPlannerEvent.days[0],
+                id: editingId,
+              }
+            : p,
         ),
       );
     } else {
-      const id = crypto.randomUUID();
-      setPlannerEvents([...plannerEvents, { ...newPlannerEvent, id }]);
+      const newEntries = newPlannerEvent.days.map((day) => ({
+        ...newPlannerEvent,
+        day,
+        id: crypto.randomUUID(),
+      }));
+      setPlannerEvents([...plannerEvents, ...newEntries]);
     }
     resetForm();
   };
@@ -206,7 +224,7 @@ export default function App() {
   const handleEditClass = (c: ClassSession) => {
     setNewClass({
       subject: c.subject,
-      day: c.day,
+      days: [c.day],
       startTime: c.startTime,
       endTime: c.endTime,
       location: c.location,
@@ -220,7 +238,7 @@ export default function App() {
   const handleEditPlannerEvent = (p: PlannerEvent) => {
     setNewPlannerEvent({
       title: p.title,
-      day: p.day,
+      days: [p.day],
       startTime: p.startTime,
       endTime: p.endTime,
       category: p.category,
@@ -723,31 +741,34 @@ export default function App() {
                         }
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">
-                          Day
-                        </label>
-                        <select
-                          className="w-full bg-neutral-50 px-6 py-4 rounded-2xl border border-neutral-100 outline-none font-bold"
-                          value={newClass.day}
-                          onChange={(e) =>
-                            setNewClass({
-                              ...newClass,
-                              day: e.target.value as Day,
-                            })
-                          }
-                        >
-                          {CLASS_DAYS.map((day) => (
-                            <option
-                              key={day}
-                              value={day}
-                            >
-                              {day}
-                            </option>
-                          ))}
-                        </select>
+                    <div>
+                      <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">
+                        Days {!editingId && "(Select multiple to repeat)"}
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {CLASS_DAYS.map((day) => (
+                          <button
+                            key={day}
+                            type="button"
+                            onClick={() => {
+                              if (editingId) {
+                                setNewClass({ ...newClass, days: [day] });
+                              } else {
+                                const days = newClass.days.includes(day)
+                                  ? newClass.days.filter((d) => d !== day)
+                                  : [...newClass.days, day];
+                                if (days.length > 0)
+                                  setNewClass({ ...newClass, days });
+                              }
+                            }}
+                            className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase transition-all border ${newClass.days.includes(day) ? "bg-indigo-600 border-indigo-600 text-white shadow-md" : "bg-neutral-50 border-neutral-100 text-neutral-400"}`}
+                          >
+                            {day.slice(0, 3)}
+                          </button>
+                        ))}
                       </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">
                           Theme
@@ -765,29 +786,32 @@ export default function App() {
                           ))}
                         </div>
                       </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <input
-                        required
-                        type="time"
-                        className="bg-neutral-50 px-6 py-4 rounded-2xl border border-neutral-100 outline-none font-bold"
-                        value={newClass.startTime}
-                        onChange={(e) =>
-                          setNewClass({
-                            ...newClass,
-                            startTime: e.target.value,
-                          })
-                        }
-                      />
-                      <input
-                        required
-                        type="time"
-                        className="bg-neutral-50 px-6 py-4 rounded-2xl border border-neutral-100 outline-none font-bold"
-                        value={newClass.endTime}
-                        onChange={(e) =>
-                          setNewClass({ ...newClass, endTime: e.target.value })
-                        }
-                      />
+                      <div className="grid grid-rows-2 gap-2">
+                        <input
+                          required
+                          type="time"
+                          className="bg-neutral-50 px-6 py-4 rounded-2xl border border-neutral-100 outline-none font-bold text-sm"
+                          value={newClass.startTime}
+                          onChange={(e) =>
+                            setNewClass({
+                              ...newClass,
+                              startTime: e.target.value,
+                            })
+                          }
+                        />
+                        <input
+                          required
+                          type="time"
+                          className="bg-neutral-50 px-6 py-4 rounded-2xl border border-neutral-100 outline-none font-bold text-sm"
+                          value={newClass.endTime}
+                          onChange={(e) =>
+                            setNewClass({
+                              ...newClass,
+                              endTime: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
                     </div>
                     <input
                       type="text"
@@ -818,6 +842,41 @@ export default function App() {
                         }
                       />
                     </div>
+                    <div>
+                      <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">
+                        Days {!editingId && "(Select multiple to repeat)"}
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {FULL_WEEK_DAYS.map((day) => (
+                          <button
+                            key={day}
+                            type="button"
+                            onClick={() => {
+                              if (editingId) {
+                                setNewPlannerEvent({
+                                  ...newPlannerEvent,
+                                  days: [day],
+                                });
+                              } else {
+                                const days = newPlannerEvent.days.includes(day)
+                                  ? newPlannerEvent.days.filter(
+                                      (d) => d !== day,
+                                    )
+                                  : [...newPlannerEvent.days, day];
+                                if (days.length > 0)
+                                  setNewPlannerEvent({
+                                    ...newPlannerEvent,
+                                    days,
+                                  });
+                              }
+                            }}
+                            className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase transition-all border ${newPlannerEvent.days.includes(day) ? "bg-emerald-600 border-emerald-600 text-white shadow-md" : "bg-neutral-50 border-neutral-100 text-neutral-400"}`}
+                          >
+                            {day.slice(0, 3)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">
@@ -846,56 +905,32 @@ export default function App() {
                           ))}
                         </select>
                       </div>
-                      <div>
-                        <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">
-                          Day
-                        </label>
-                        <select
-                          className="w-full bg-neutral-50 px-6 py-4 rounded-2xl border border-neutral-100 outline-none font-bold"
-                          value={newPlannerEvent.day}
+                      <div className="grid grid-rows-2 gap-2">
+                        <input
+                          required
+                          type="time"
+                          className="bg-neutral-50 px-6 py-4 rounded-2xl border border-neutral-100 outline-none font-bold text-sm"
+                          value={newPlannerEvent.startTime}
                           onChange={(e) =>
                             setNewPlannerEvent({
                               ...newPlannerEvent,
-                              day: e.target.value as Day,
+                              startTime: e.target.value,
                             })
                           }
-                        >
-                          {FULL_WEEK_DAYS.map((day) => (
-                            <option
-                              key={day}
-                              value={day}
-                            >
-                              {day}
-                            </option>
-                          ))}
-                        </select>
+                        />
+                        <input
+                          required
+                          type="time"
+                          className="bg-neutral-50 px-6 py-4 rounded-2xl border border-neutral-100 outline-none font-bold text-sm"
+                          value={newPlannerEvent.endTime}
+                          onChange={(e) =>
+                            setNewPlannerEvent({
+                              ...newPlannerEvent,
+                              endTime: e.target.value,
+                            })
+                          }
+                        />
                       </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <input
-                        required
-                        type="time"
-                        className="bg-neutral-50 px-6 py-4 rounded-2xl border border-neutral-100 outline-none font-bold"
-                        value={newPlannerEvent.startTime}
-                        onChange={(e) =>
-                          setNewPlannerEvent({
-                            ...newPlannerEvent,
-                            startTime: e.target.value,
-                          })
-                        }
-                      />
-                      <input
-                        required
-                        type="time"
-                        className="bg-neutral-50 px-6 py-4 rounded-2xl border border-neutral-100 outline-none font-bold"
-                        value={newPlannerEvent.endTime}
-                        onChange={(e) =>
-                          setNewPlannerEvent({
-                            ...newPlannerEvent,
-                            endTime: e.target.value,
-                          })
-                        }
-                      />
                     </div>
                   </div>
                 )}
