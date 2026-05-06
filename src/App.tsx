@@ -48,7 +48,7 @@ interface PlannerEvent {
   day: Day;
   startTime: string; // HH:mm
   endTime: string; // HH:mm
-  category: "Study" | "Social" | "Work" | "Health" | "Other";
+  category: "Study" | "Social" | "Work" | "Health" | "Sports" | "Other";
   color: string;
 }
 
@@ -85,6 +85,7 @@ const CATEGORIES = {
   Social: "bg-rose-500",
   Work: "bg-amber-500",
   Health: "bg-emerald-500",
+  Sports: "bg-orange-500",
   Other: "bg-slate-500",
 };
 
