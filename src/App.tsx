@@ -268,8 +268,8 @@ export default function App() {
     (_, i) => startHourClasses + i,
   );
 
-  const startHourPlanner = 5; // 5 AM
-  const endHourPlanner = 23; // 11 PM
+  const startHourPlanner = 6; // 6 AM
+  const endHourPlanner = 24; // Midnight
   const hoursPlanner = Array.from(
     { length: endHourPlanner - startHourPlanner + 1 },
     (_, i) => startHourPlanner + i,
@@ -599,7 +599,7 @@ export default function App() {
                             top: `${(hour - startHourPlanner) * 60 + 10}px`,
                           }}
                         >
-                          {hour}:00
+                          {hour === 24 ? "00" : hour}:00
                         </div>
                       ))}
                     </div>
@@ -668,7 +668,9 @@ export default function App() {
                                   {height > 40 && (
                                     <div className="mt-auto flex items-center gap-1 text-[9px] font-bold opacity-80">
                                       <Clock size={8} />
-                                      <span>{p.startTime}</span>
+                                      <span>
+                                        {p.startTime} - {p.endTime}
+                                      </span>
                                     </div>
                                   )}
                                 </motion.div>
