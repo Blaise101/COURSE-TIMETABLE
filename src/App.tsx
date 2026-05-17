@@ -680,6 +680,52 @@ export default function App() {
                     </div>
                   </div>
 
+                  {/* Next Event Card */}
+                  <div
+                    onClick={() =>
+                      setView(
+                        nextEvent?.type === "Class" ? "classes" : "planner",
+                      )
+                    }
+                    className="col-span-1 p-8 rounded-[2.5rem] bg-indigo-50 border border-indigo-100 shadow-sm hover:shadow-md transition-all cursor-pointer relative overflow-hidden group"
+                  >
+                    <div className="absolute -right-4 -bottom-4 text-indigo-100 group-hover:text-indigo-200/50 transition-colors">
+                      <ArrowRight
+                        size={120}
+                        strokeWidth={1}
+                      />
+                    </div>
+                    <div className="relative z-10">
+                      <div className="w-10 h-10 bg-white text-indigo-600 rounded-xl flex items-center justify-center mb-4 shadow-sm">
+                        <Plus size={20} />
+                      </div>
+                      <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-1">
+                        Next Up
+                      </p>
+                      {nextEvent ? (
+                        <div>
+                          <h3 className="text-xl font-black text-neutral-900 truncate">
+                            {nextEvent.title}
+                          </h3>
+                          <div className="mt-3 flex items-center gap-2">
+                            <div className="bg-indigo-600 text-white px-2 py-0.5 rounded text-[10px] font-black uppercase">
+                              {nextEvent.startTime}
+                            </div>
+                            {nextEvent.day !== currentDay && (
+                              <span className="text-[10px] font-bold text-neutral-400 uppercase">
+                                {nextEvent.day}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-xl font-black text-neutral-400">
+                          All caught up!
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="bg-white p-6 rounded-3xl border border-neutral-100 shadow-sm">
                     <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center mb-4">
                       <Target size={20} />
@@ -1069,36 +1115,70 @@ export default function App() {
 
         {/* Picture in Picture Portal */}
         {pipWindow &&
-          activeEvent &&
           createPortal(
             <div
-              className="h-full w-full flex flex-col items-center justify-center bg-neutral-900 text-white font-sans"
+              className="h-full w-full flex flex-col bg-neutral-900 text-white font-sans overflow-hidden"
               style={{ fontFamily: '"Inter", sans-serif' }}
             >
-              <div
-                className={`w-14 h-14 ${activeEvent.color} rounded-[1.25rem] flex items-center justify-center text-white shadow-2xl mb-4 border border-white/10`}
-              >
-                <Clock size={28} />
+              <div className="flex-1 flex flex-col items-center justify-center p-4">
+                {activeEvent ? (
+                  <>
+                    <div
+                      className={`w-12 h-12 ${activeEvent.color} rounded-xl flex items-center justify-center text-white shadow-2xl mb-3 border border-white/10`}
+                    >
+                      <Clock size={24} />
+                    </div>
+                    <div className="text-center px-4 w-full">
+                      <span className="text-[9px] font-black opacity-40 uppercase tracking-[0.2em]">
+                        {activeEvent.type}
+                      </span>
+                      <h1 className="text-lg font-black mt-0.5 truncate leading-tight">
+                        {activeEvent.title}
+                      </h1>
+                    </div>
+                    <div className="mt-4 flex flex-col items-center">
+                      <div className="text-4xl font-black tabular-nums tracking-tighter text-indigo-400 leading-none">
+                        {timeLeft?.formatted || "00m 00s"}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center opacity-40">
+                    <Target
+                      size={32}
+                      className="mx-auto mb-2"
+                    />
+                    <p className="text-xs font-black uppercase tracking-widest">
+                      Focus Mode
+                    </p>
+                  </div>
+                )}
               </div>
-              <div className="text-center px-4 w-full">
-                <span className="text-[10px] font-black opacity-40 uppercase tracking-[0.2em]">
-                  {activeEvent.type}
-                </span>
-                <h1 className="text-xl font-black mt-1 truncate leading-tight">
-                  {activeEvent.title}
-                </h1>
-              </div>
-              <div className="mt-5 flex flex-col items-center">
-                <div className="text-5xl font-black tabular-nums tracking-tighter text-indigo-400 leading-none">
-                  {timeLeft?.formatted || "00m 00s"}
+
+              {/* Next Up Section in PiP */}
+              {nextEvent && (
+                <div className="bg-white/5 border-t border-white/10 px-4 py-3 flex items-center justify-between">
+                  <div className="flex items-center gap-3 overflow-hidden">
+                    <div className="w-7 h-7 bg-indigo-500/20 rounded-lg flex items-center justify-center text-indigo-400 shrink-0">
+                      <Plus size={14} />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[8px] font-black uppercase opacity-40 tracking-widest leading-none mb-0.5">
+                        Next
+                      </span>
+                      <span className="text-[10px] font-bold truncate leading-tight">
+                        {nextEvent.title}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="bg-indigo-500 text-white px-1.5 py-0.5 rounded text-[9px] font-black shrink-0">
+                    {nextEvent.startTime}
+                  </div>
                 </div>
-                <div className="text-[10px] font-bold uppercase tracking-widest mt-2 text-white/20">
-                  Time Remaining
-                </div>
-              </div>
-              <div className="absolute bottom-4 flex items-center gap-2 opacity-30 text-[9px] font-bold uppercase tracking-widest">
-                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
-                Live Sync Active
+              )}
+
+              <div className="absolute top-2 right-2 opacity-20">
+                <div className="w-1 h-1 rounded-full bg-white animate-pulse" />
               </div>
             </div>,
             pipWindow.document.body,
