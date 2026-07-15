@@ -18,6 +18,7 @@ import {
   ChevronRight,
   ArrowRight,
   ExternalLink,
+  BarChart3,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -274,6 +275,71 @@ export default function App() {
       formatted: `${h > 0 ? `${h}h ` : ""}${m}m ${s}s`,
     };
   }, [activeEvent, now]);
+
+  const weeklyActionStats = useMemo(() => {
+    const stats: Record<
+      string,
+      { durationMinutes: number; color: string; count: number; type: string }
+    > = {};
+
+    // Process Classes
+    classes.forEach((c) => {
+      const start = timeToMinutes(c.startTime);
+      const end = timeToMinutes(c.endTime);
+      const duration = end - start;
+      if (duration > 0) {
+        const key = c.subject.trim();
+        if (!stats[key]) {
+          stats[key] = {
+            durationMinutes: 0,
+            color: c.color,
+            count: 0,
+            type: "Class",
+          };
+        }
+        stats[key].durationMinutes += duration;
+        stats[key].count += 1;
+      }
+    });
+
+    // Process Planner Events
+    plannerEvents.forEach((p) => {
+      const start = timeToMinutes(p.startTime);
+      const end = timeToMinutes(p.endTime);
+      const duration = end - start;
+      if (duration > 0) {
+        const key = p.title.trim();
+        if (!stats[key]) {
+          stats[key] = {
+            durationMinutes: 0,
+            color: p.color,
+            count: 0,
+            type: p.category,
+          };
+        }
+        stats[key].durationMinutes += duration;
+        stats[key].count += 1;
+      }
+    });
+
+    return Object.entries(stats)
+      .map(([name, data]) => {
+        const hours = data.durationMinutes / 60;
+        return {
+          name,
+          hours: Math.round(hours * 10) / 10,
+          minutes: data.durationMinutes,
+          color: data.color,
+          count: data.count,
+          type: data.type,
+        };
+      })
+      .sort((a, b) => b.minutes - a.minutes);
+  }, [classes, plannerEvents]);
+
+  const totalWeeklyMinutes = useMemo(() => {
+    return weeklyActionStats.reduce((acc, curr) => acc + curr.minutes, 0);
+  }, [weeklyActionStats]);
 
   const [pipWindow, setPipWindow] = useState<Window | null>(null);
 
@@ -767,6 +833,113 @@ export default function App() {
                       Week Focus
                     </p>
                     <p className="text-2xl font-black mt-1">Academics</p>
+                  </div>
+
+                  {/* Weekly Actions Statistics Card */}
+                  <div className="col-span-1 sm:col-span-3 bg-white border border-neutral-200 p-8 rounded-[2.5rem] shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col gap-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+                            <BarChart3 size={20} />
+                          </div>
+                          <h3 className="text-xl font-black text-neutral-900">
+                            Weekly Time Distribution
+                          </h3>
+                        </div>
+                        <p className="text-neutral-500 text-sm mt-1">
+                          Real-time statistics of your active classes and life
+                          planner actions.
+                        </p>
+                      </div>
+
+                      {totalWeeklyMinutes > 0 && (
+                        <div className="bg-indigo-50 border border-indigo-100 rounded-2xl px-5 py-3 flex items-center gap-3 shrink-0">
+                          <div className="text-indigo-600">
+                            <Clock size={24} />
+                          </div>
+                          <div>
+                            <span className="text-[10px] uppercase font-black text-neutral-400 tracking-wider leading-none block">
+                              Total Scheduled
+                            </span>
+                            <span className="font-mono font-black text-lg text-indigo-600 leading-none">
+                              {Math.round((totalWeeklyMinutes / 60) * 10) / 10}h
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="h-px bg-neutral-100" />
+
+                    {weeklyActionStats.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-8 text-center border-2 border-dashed border-neutral-100 rounded-3xl p-6 bg-neutral-50/50">
+                        <CalendarDays
+                          className="text-neutral-300 mb-3"
+                          size={40}
+                        />
+                        <h4 className="font-bold text-neutral-700">
+                          No activities scheduled yet
+                        </h4>
+                        <p className="text-neutral-400 text-xs max-w-sm mt-1">
+                          Add some lectures, labs, or planner events (like
+                          Sleep, Study, Work) to see your weekly time breakdown!
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5 max-h-[320px] overflow-y-auto pr-2 no-scrollbar">
+                        {weeklyActionStats.map((item) => {
+                          const percentage =
+                            totalWeeklyMinutes > 0
+                              ? Math.round(
+                                  (item.minutes / totalWeeklyMinutes) * 100,
+                                )
+                              : 0;
+                          return (
+                            <div
+                              key={item.name}
+                              className="flex flex-col gap-2 p-3 rounded-2xl hover:bg-neutral-50 transition-all border border-transparent hover:border-neutral-100"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div
+                                    className={`w-3 h-3 rounded-full ${item.color} shrink-0`}
+                                  />
+                                  <span
+                                    className="font-bold text-sm text-neutral-800 truncate"
+                                    title={item.name}
+                                  >
+                                    {item.name}
+                                  </span>
+                                  <span className="text-[9px] px-2 py-0.5 bg-neutral-100 text-neutral-500 rounded-full uppercase font-black tracking-wider shrink-0">
+                                    {item.type}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span className="font-mono text-sm font-black text-neutral-900">
+                                    {item.hours}h
+                                  </span>
+                                  <span className="text-xs text-neutral-400 font-bold">
+                                    ({percentage}%)
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="w-full bg-neutral-100 h-2.5 rounded-full overflow-hidden">
+                                <motion.div
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${percentage}%` }}
+                                  transition={{
+                                    duration: 0.8,
+                                    ease: "easeOut",
+                                  }}
+                                  className={`h-full ${item.color} rounded-full`}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
               </motion.div>
