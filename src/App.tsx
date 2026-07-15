@@ -364,7 +364,7 @@ export default function App() {
     });
 
     if (totalBreakMinutes > 0) {
-      const breakKey = "Break";
+      const breakKey = "Breaks";
       if (!stats[breakKey]) {
         stats[breakKey] = {
           durationMinutes: 0,
