@@ -322,6 +322,19 @@ export default function App() {
       }
     });
 
+    // Automatically add 6 hours of sleep per day for midnight to 6 AM (which is not in the scheduler)
+    const autoSleepMinutes = 6 * 60 * 7; // 42 hours total
+    const sleepKey = "Sleep";
+    if (!stats[sleepKey]) {
+      stats[sleepKey] = {
+        durationMinutes: 0,
+        color: "bg-emerald-500",
+        count: 7,
+        type: "Health",
+      };
+    }
+    stats[sleepKey].durationMinutes += autoSleepMinutes;
+
     return Object.entries(stats)
       .map(([name, data]) => {
         const hours = data.durationMinutes / 60;
