@@ -320,6 +320,62 @@ export default function App() {
     }
     stats[sleepKey].durationMinutes += autoSleepMinutes;
 
+    // Calculate all time between activities (within 6:00 AM to 12:00 AM / 24:00) as "Break"
+    let totalBreakMinutes = 0;
+    const startLimit = 6 * 60; // 360 mins
+    const endLimit = 24 * 60; // 1440 mins
+
+    FULL_WEEK_DAYS.forEach((day) => {
+      const dayEvents = plannerEvents.filter((p) => p.day === day);
+      const intervals: [number, number][] = [];
+
+      dayEvents.forEach((p) => {
+        const s = Math.max(startLimit, timeToMinutes(p.startTime));
+        const e = Math.min(endLimit, timeToMinutes(p.endTime));
+        if (e > s) {
+          intervals.push([s, e]);
+        }
+      });
+
+      if (intervals.length === 0) {
+        totalBreakMinutes += endLimit - startLimit;
+        return;
+      }
+
+      // Sort intervals by start time
+      intervals.sort((a, b) => a[0] - b[0]);
+
+      // Merge overlapping or touching intervals
+      const merged: [number, number][] = [[intervals[0][0], intervals[0][1]]];
+      for (let i = 1; i < intervals.length; i++) {
+        const current = intervals[i];
+        const last = merged[merged.length - 1];
+        if (current[0] <= last[1]) {
+          last[1] = Math.max(last[1], current[1]);
+        } else {
+          merged.push([current[0], current[1]]);
+        }
+      }
+
+      // Sum busy minutes and compute break minutes
+      const occupiedMinutes = merged.reduce((acc, [s, e]) => acc + (e - s), 0);
+      const breakMinutes = endLimit - startLimit - occupiedMinutes;
+      totalBreakMinutes += Math.max(0, breakMinutes);
+    });
+
+    if (totalBreakMinutes > 0) {
+      const breakKey = "Break";
+      if (!stats[breakKey]) {
+        stats[breakKey] = {
+          durationMinutes: 0,
+          color: "bg-slate-400",
+          count: 7,
+          type: "Other",
+        };
+      }
+      stats[breakKey].durationMinutes += totalBreakMinutes;
+    }
+
     return Object.entries(stats)
       .map(([name, data]) => {
         const hours = data.durationMinutes / 60;
