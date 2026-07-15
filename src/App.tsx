@@ -282,26 +282,6 @@ export default function App() {
       { durationMinutes: number; color: string; count: number; type: string }
     > = {};
 
-    // Process Classes
-    classes.forEach((c) => {
-      const start = timeToMinutes(c.startTime);
-      const end = timeToMinutes(c.endTime);
-      const duration = end - start;
-      if (duration > 0) {
-        const key = c.subject.trim();
-        if (!stats[key]) {
-          stats[key] = {
-            durationMinutes: 0,
-            color: c.color,
-            count: 0,
-            type: "Class",
-          };
-        }
-        stats[key].durationMinutes += duration;
-        stats[key].count += 1;
-      }
-    });
-
     // Process Planner Events
     plannerEvents.forEach((p) => {
       const start = timeToMinutes(p.startTime);
@@ -348,7 +328,7 @@ export default function App() {
         };
       })
       .sort((a, b) => b.minutes - a.minutes);
-  }, [classes, plannerEvents]);
+  }, [plannerEvents]);
 
   const totalWeeklyMinutes = useMemo(() => {
     return weeklyActionStats.reduce((acc, curr) => acc + curr.minutes, 0);
@@ -861,8 +841,8 @@ export default function App() {
                           </h3>
                         </div>
                         <p className="text-neutral-500 text-sm mt-1">
-                          Real-time statistics of your active classes and life
-                          planner actions.
+                          Real-time statistics based entirely on your weekly
+                          life planner events.
                         </p>
                       </div>
 
