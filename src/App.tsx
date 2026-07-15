@@ -51,7 +51,7 @@ interface PlannerEvent {
   day: Day;
   startTime: string; // HH:mm
   endTime: string; // HH:mm
-  category: "Study" | "Social" | "Work" | "Health" | "Other";
+  category: "Class" | "Study" | "Social" | "Work" | "Health" | "Other";
   color: string;
 }
 
@@ -84,7 +84,8 @@ const COLORS = [
 ];
 
 const CATEGORIES = {
-  Study: "bg-indigo-500",
+  Class: "bg-indigo-600",
+  Study: "bg-indigo-400",
   Social: "bg-rose-500",
   Work: "bg-amber-500",
   Health: "bg-emerald-500",
@@ -288,13 +289,17 @@ export default function App() {
       const end = timeToMinutes(p.endTime);
       const duration = end - start;
       if (duration > 0) {
-        const key = p.title.trim();
+        const isClass = p.category === "Class" || p.category === "Study";
+        const key = isClass ? "Class" : p.title.trim();
+        const displayColor = isClass ? "bg-indigo-600" : p.color;
+        const displayType = isClass ? "Class" : p.category;
+
         if (!stats[key]) {
           stats[key] = {
             durationMinutes: 0,
-            color: p.color,
+            color: displayColor,
             count: 0,
-            type: p.category,
+            type: displayType,
           };
         }
         stats[key].durationMinutes += duration;
