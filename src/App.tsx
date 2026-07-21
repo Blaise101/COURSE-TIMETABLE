@@ -19,6 +19,8 @@ import {
   ArrowRight,
   ExternalLink,
   BarChart3,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -107,6 +109,19 @@ const minutesToPosition = (minutes: number, startHour: number) => {
 
 export default function App() {
   const [view, setView] = useState<View>("dashboard");
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem("darkMode");
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("darkMode", JSON.stringify(darkMode));
+    if (darkMode) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [darkMode]);
 
   // Classes State
   const [classes, setClasses] = useState<ClassSession[]>(() => {
@@ -307,28 +322,50 @@ export default function App() {
       }
     });
 
-    // Automatically add 6 hours of sleep per day for midnight to 6 AM (which is not in the scheduler)
-    const autoSleepMinutes = 6 * 60 * 7; // 42 hours total
-    const sleepKey = "Sleep";
-    if (!stats[sleepKey]) {
-      stats[sleepKey] = {
-        durationMinutes: 0,
-        color: "bg-emerald-500",
-        count: 7,
-        type: "Health",
-      };
-    }
-    stats[sleepKey].durationMinutes += autoSleepMinutes;
-
-    // Calculate all time between activities (within 6:00 AM to 12:00 AM / 24:00) as "Break"
+    // Calculate all time between activities (within 6:00 AM to 11:00 PM / 23:00) as "Break"
+    // Unoccupied time between 11:00 PM (23:00) and 12:00 AM (24:00) is counted as Sleep
+    let totalSleepMinutes = 6 * 60 * 7; // Start with 6 hours of sleep per day for midnight to 6 AM (which is not in the scheduler)
     let totalBreakMinutes = 0;
     const startLimit = 6 * 60; // 360 mins
-    const endLimit = 24 * 60; // 1440 mins
+    const endLimit = 23 * 60; // 1380 mins
 
     FULL_WEEK_DAYS.forEach((day) => {
       const dayEvents = plannerEvents.filter((p) => p.day === day);
-      const intervals: [number, number][] = [];
 
+      // Calculate any unoccupied time between 23:00 and 24:00 as part of Sleep
+      const nightIntervals: [number, number][] = [];
+      dayEvents.forEach((p) => {
+        const s = Math.max(23 * 60, timeToMinutes(p.startTime));
+        const e = Math.min(24 * 60, timeToMinutes(p.endTime));
+        if (e > s) {
+          nightIntervals.push([s, e]);
+        }
+      });
+      let occupiedNightMinutes = 0;
+      if (nightIntervals.length > 0) {
+        nightIntervals.sort((a, b) => a[0] - b[0]);
+        const mergedNight: [number, number][] = [
+          [nightIntervals[0][0], nightIntervals[0][1]],
+        ];
+        for (let i = 1; i < nightIntervals.length; i++) {
+          const current = nightIntervals[i];
+          const last = mergedNight[mergedNight.length - 1];
+          if (current[0] <= last[1]) {
+            last[1] = Math.max(last[1], current[1]);
+          } else {
+            mergedNight.push([current[0], current[1]]);
+          }
+        }
+        occupiedNightMinutes = mergedNight.reduce(
+          (acc, [s, e]) => acc + (e - s),
+          0,
+        );
+      }
+      const sleepGap = 60 - occupiedNightMinutes;
+      totalSleepMinutes += Math.max(0, sleepGap);
+
+      // Calculate breaks between 6:00 and 23:00
+      const intervals: [number, number][] = [];
       dayEvents.forEach((p) => {
         const s = Math.max(startLimit, timeToMinutes(p.startTime));
         const e = Math.min(endLimit, timeToMinutes(p.endTime));
@@ -363,8 +400,19 @@ export default function App() {
       totalBreakMinutes += Math.max(0, breakMinutes);
     });
 
+    const sleepKey = "Sleep";
+    if (!stats[sleepKey]) {
+      stats[sleepKey] = {
+        durationMinutes: 0,
+        color: "bg-emerald-500",
+        count: 7,
+        type: "Health",
+      };
+    }
+    stats[sleepKey].durationMinutes += totalSleepMinutes;
+
     if (totalBreakMinutes > 0) {
-      const breakKey = "Breaks";
+      const breakKey = "Break";
       if (!stats[breakKey]) {
         stats[breakKey] = {
           durationMinutes: 0,
@@ -617,29 +665,40 @@ export default function App() {
   const plannerCount = plannerEvents.length;
 
   return (
-    <div className="min-h-screen bg-neutral-50 text-neutral-900 font-sans selection:bg-indigo-100 selection:text-indigo-900">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 font-sans selection:bg-indigo-100 selection:text-indigo-900 transition-colors duration-200">
       {/* Sidebar / Navigation (Responsive) */}
-      <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-white/90 backdrop-blur-xl border border-neutral-200 px-2 py-2 rounded-full shadow-2xl flex items-center gap-1 sm:bottom-auto sm:top-4 sm:left-4 sm:translate-x-0 sm:flex-col sm:w-16 sm:py-6 sm:h-[calc(100vh-2rem)] sm:justify-center print:hidden">
+      <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border border-neutral-200 dark:border-neutral-800 px-2 py-2 rounded-full shadow-2xl flex items-center gap-1 sm:bottom-auto sm:top-4 sm:left-4 sm:translate-x-0 sm:flex-col sm:w-16 sm:py-6 sm:h-[calc(100vh-2rem)] sm:justify-between print:hidden transition-colors duration-200">
+        <div className="flex items-center gap-1 sm:flex-col sm:gap-4">
+          <button
+            onClick={() => setView("dashboard")}
+            className={`p-3 rounded-full transition-all ${view === "dashboard" ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none" : "text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"}`}
+            title="Dashboard"
+          >
+            <LayoutDashboard size={24} />
+          </button>
+          <button
+            onClick={() => setView("classes")}
+            className={`p-3 rounded-full transition-all ${view === "classes" ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none" : "text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"}`}
+            title="Class Timetable"
+          >
+            <Calendar size={24} />
+          </button>
+          <button
+            onClick={() => setView("planner")}
+            className={`p-3 rounded-full transition-all ${view === "planner" ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none" : "text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"}`}
+            title="Weekly Planner"
+          >
+            <CalendarDays size={24} />
+          </button>
+        </div>
+
+        {/* Theme Toggle Button */}
         <button
-          onClick={() => setView("dashboard")}
-          className={`p-3 rounded-full transition-all ${view === "dashboard" ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200" : "text-neutral-500 hover:bg-neutral-100"}`}
-          title="Dashboard"
+          onClick={() => setDarkMode(!darkMode)}
+          className="p-3 rounded-full text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800 transition-all cursor-pointer"
+          title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
         >
-          <LayoutDashboard size={24} />
-        </button>
-        <button
-          onClick={() => setView("classes")}
-          className={`p-3 rounded-full transition-all ${view === "classes" ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200" : "text-neutral-500 hover:bg-neutral-100"}`}
-          title="Class Timetable"
-        >
-          <Calendar size={24} />
-        </button>
-        <button
-          onClick={() => setView("planner")}
-          className={`p-3 rounded-full transition-all ${view === "planner" ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200" : "text-neutral-500 hover:bg-neutral-100"}`}
-          title="Weekly Planner"
-        >
-          <CalendarDays size={24} />
+          {darkMode ? <Sun size={24} /> : <Moon size={24} />}
         </button>
       </nav>
 
@@ -647,12 +706,12 @@ export default function App() {
       <div className="sm:pl-24 pb-24 sm:pb-8">
         <header className="px-6 py-8 flex justify-between items-end max-w-[1600px] mx-auto print:hidden">
           <div>
-            <h1 className="text-3xl font-black tracking-tight text-neutral-900">
+            <h1 className="text-3xl font-black tracking-tight text-neutral-900 dark:text-neutral-50">
               {view === "dashboard" && "Student Hub"}
               {view === "classes" && "Class Schedule"}
               {view === "planner" && "Life Planner"}
             </h1>
-            <p className="text-neutral-500 font-medium mt-1">
+            <p className="text-neutral-500 dark:text-neutral-400 font-medium mt-1">
               {view === "dashboard" && "Welcome back! Here's your overview."}
               {view === "classes" && "Manage your academic lectures and labs."}
               {view === "planner" && "Plan your study, work, and social life."}
@@ -662,14 +721,14 @@ export default function App() {
             {view !== "dashboard" && (
               <button
                 onClick={() => window.print()}
-                className="p-3 bg-white border border-neutral-200 rounded-2xl text-neutral-600 hover:bg-neutral-50 transition-all shadow-sm"
+                className="p-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all shadow-sm"
               >
                 <Download size={20} />
               </button>
             )}
             <button
               onClick={() => setIsAddingMode(true)}
-              className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-2xl flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-95"
+              className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-2xl flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 dark:shadow-none active:scale-95"
             >
               <Plus size={20} />
               <span className="hidden sm:inline">Add New</span>
@@ -690,22 +749,22 @@ export default function App() {
                 {/* Academic Card */}
                 <div
                   onClick={() => setView("classes")}
-                  className="group relative bg-white border border-neutral-200 p-8 rounded-[2.5rem] shadow-sm hover:shadow-xl hover:border-indigo-100 transition-all cursor-pointer overflow-hidden"
+                  className="group relative bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-8 rounded-[2.5rem] shadow-sm hover:shadow-xl hover:border-indigo-100 dark:hover:border-indigo-900 transition-all cursor-pointer overflow-hidden"
                 >
-                  <div className="absolute top-0 right-0 p-8 text-neutral-100 group-hover:text-indigo-50 transition-colors">
+                  <div className="absolute top-0 right-0 p-8 text-neutral-100 dark:text-neutral-800/40 group-hover:text-indigo-50 dark:group-hover:text-neutral-800/60 transition-colors">
                     <Calendar
                       size={120}
                       strokeWidth={1}
                     />
                   </div>
                   <div className="relative z-10">
-                    <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-6">
+                    <div className="w-14 h-14 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center mb-6">
                       <Calendar size={28} />
                     </div>
-                    <h2 className="text-3xl font-black mb-2">
+                    <h2 className="text-3xl font-black mb-2 text-neutral-900 dark:text-neutral-50">
                       Class Timetable
                     </h2>
-                    <p className="text-neutral-500 max-w-xs mb-8">
+                    <p className="text-neutral-500 dark:text-neutral-400 max-w-xs mb-8">
                       View and manage your academic schedule across the week.
                     </p>
 
@@ -713,7 +772,7 @@ export default function App() {
                       <div className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold text-sm">
                         {classCount} Sessions
                       </div>
-                      <span className="text-indigo-600 font-bold flex items-center gap-1 group-hover:gap-2 transition-all">
+                      <span className="text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-1 group-hover:gap-2 transition-all">
                         View Schedule <ArrowRight size={16} />
                       </span>
                     </div>
@@ -723,20 +782,22 @@ export default function App() {
                 {/* Planner Card */}
                 <div
                   onClick={() => setView("planner")}
-                  className="group relative bg-white border border-neutral-200 p-8 rounded-[2.5rem] shadow-sm hover:shadow-xl hover:border-emerald-100 transition-all cursor-pointer overflow-hidden"
+                  className="group relative bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-8 rounded-[2.5rem] shadow-sm hover:shadow-xl hover:border-emerald-100 dark:hover:border-emerald-900 transition-all cursor-pointer overflow-hidden"
                 >
-                  <div className="absolute top-0 right-0 p-8 text-neutral-100 group-hover:text-emerald-50 transition-colors">
+                  <div className="absolute top-0 right-0 p-8 text-neutral-100 dark:text-neutral-800/40 group-hover:text-emerald-50 dark:group-hover:text-neutral-800/60 transition-colors">
                     <CalendarDays
                       size={120}
                       strokeWidth={1}
                     />
                   </div>
                   <div className="relative z-10">
-                    <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-6">
+                    <div className="w-14 h-14 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center mb-6">
                       <CalendarDays size={28} />
                     </div>
-                    <h2 className="text-3xl font-black mb-2">Life Planner</h2>
-                    <p className="text-neutral-500 max-w-xs mb-8">
+                    <h2 className="text-3xl font-black mb-2 text-neutral-900 dark:text-neutral-50">
+                      Life Planner
+                    </h2>
+                    <p className="text-neutral-500 dark:text-neutral-400 max-w-xs mb-8">
                       Detailed weekly overview covering study, social, and
                       personal goals.
                     </p>
@@ -745,7 +806,7 @@ export default function App() {
                       <div className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-bold text-sm">
                         {plannerCount} Events
                       </div>
-                      <span className="text-emerald-600 font-bold flex items-center gap-1 group-hover:gap-2 transition-all">
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 group-hover:gap-2 transition-all">
                         Open Planner <ArrowRight size={16} />
                       </span>
                     </div>
@@ -755,7 +816,7 @@ export default function App() {
                 {/* Bottom Stats Grid */}
                 <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-6">
                   <div
-                    className={`col-span-1 sm:col-span-2 lg:col-span-1 p-8 rounded-[2.5rem] border transition-all flex flex-col justify-between relative overflow-hidden ${activeEvent ? `${activeEvent.color} text-white border-transparent shadow-xl` : "bg-white border-neutral-100 shadow-sm"}`}
+                    className={`col-span-1 sm:col-span-2 lg:col-span-1 p-8 rounded-[2.5rem] border transition-all flex flex-col justify-between relative overflow-hidden ${activeEvent ? `${activeEvent.color} text-white border-transparent shadow-xl` : "bg-white dark:bg-neutral-900 border-neutral-100 dark:border-neutral-800/80 shadow-sm"}`}
                   >
                     {activeEvent && (
                       <motion.div
@@ -768,12 +829,12 @@ export default function App() {
                     )}
                     <div className="relative z-10">
                       <div
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 ${activeEvent ? "bg-white/20" : "bg-amber-50 text-amber-600"}`}
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 ${activeEvent ? "bg-white/20" : "bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400"}`}
                       >
                         <Target size={20} />
                       </div>
                       <p
-                        className={`text-xs font-bold uppercase tracking-widest ${activeEvent ? "text-white/60" : "text-neutral-400"}`}
+                        className={`text-xs font-bold uppercase tracking-widest ${activeEvent ? "text-white/60" : "text-neutral-400 dark:text-neutral-500"}`}
                       >
                         {activeEvent
                           ? `Current: ${activeEvent.type}`
@@ -795,7 +856,9 @@ export default function App() {
                           </div>
                         </div>
                       ) : (
-                        <p className="text-2xl font-black mt-1">High Focus</p>
+                        <p className="text-2xl font-black mt-1 text-neutral-900 dark:text-neutral-100">
+                          High Focus
+                        </p>
                       )}
                     </div>
                   </div>
@@ -807,24 +870,24 @@ export default function App() {
                         nextEvent?.type === "Class" ? "classes" : "planner",
                       )
                     }
-                    className="col-span-1 p-8 rounded-[2.5rem] bg-indigo-50 border border-indigo-100 shadow-sm hover:shadow-md transition-all cursor-pointer relative overflow-hidden group"
+                    className="col-span-1 p-8 rounded-[2.5rem] bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/50 shadow-sm hover:shadow-md transition-all cursor-pointer relative overflow-hidden group"
                   >
-                    <div className="absolute -right-4 -bottom-4 text-indigo-100 group-hover:text-indigo-200/50 transition-colors">
+                    <div className="absolute -right-4 -bottom-4 text-indigo-100 dark:text-indigo-900/30 group-hover:text-indigo-200/50 dark:group-hover:text-indigo-900/40 transition-colors">
                       <ArrowRight
                         size={120}
                         strokeWidth={1}
                       />
                     </div>
                     <div className="relative z-10">
-                      <div className="w-10 h-10 bg-white text-indigo-600 rounded-xl flex items-center justify-center mb-4 shadow-sm">
+                      <div className="w-10 h-10 bg-white dark:bg-neutral-900 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center mb-4 shadow-sm">
                         <Plus size={20} />
                       </div>
-                      <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-1">
+                      <p className="text-xs font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-1">
                         Next Up
                       </p>
                       {nextEvent ? (
                         <div>
-                          <h3 className="text-xl font-black text-neutral-900 truncate">
+                          <h3 className="text-xl font-black text-neutral-900 dark:text-neutral-100 truncate">
                             {nextEvent.title}
                           </h3>
                           <div className="mt-3 flex items-center gap-2">
@@ -832,40 +895,42 @@ export default function App() {
                               {nextEvent.startTime}
                             </div>
                             {nextEvent.day !== currentDay && (
-                              <span className="text-[10px] font-bold text-neutral-400 uppercase">
+                              <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase">
                                 {nextEvent.day}
                               </span>
                             )}
                           </div>
                         </div>
                       ) : (
-                        <p className="text-xl font-black text-neutral-400">
+                        <p className="text-xl font-black text-neutral-400 dark:text-neutral-500">
                           All caught up!
                         </p>
                       )}
                     </div>
                   </div>
 
-                  <div className="bg-white p-6 rounded-3xl border border-neutral-100 shadow-sm">
-                    <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center mb-4">
+                  <div className="bg-white dark:bg-neutral-900 p-6 rounded-3xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
+                    <div className="w-10 h-10 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 rounded-xl flex items-center justify-center mb-4">
                       <Target size={20} />
                     </div>
-                    <p className="text-neutral-400 text-xs font-bold uppercase tracking-widest">
+                    <p className="text-neutral-400 dark:text-neutral-500 text-xs font-bold uppercase tracking-widest">
                       Productivity
                     </p>
-                    <p className="text-2xl font-black mt-1">High</p>
+                    <p className="text-2xl font-black mt-1 text-neutral-900 dark:text-neutral-100">
+                      High
+                    </p>
                   </div>
-                  <div className="bg-white p-6 rounded-3xl border border-neutral-100 shadow-sm">
+                  <div className="bg-white dark:bg-neutral-900 p-6 rounded-3xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
                     <div
-                      className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center mb-4 cursor-pointer hover:bg-indigo-100 transition-all"
+                      className="w-10 h-10 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center mb-4 cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-950/60 transition-all"
                       onClick={requestNotificationPermission}
                     >
                       <Info size={20} />
                     </div>
-                    <p className="text-neutral-400 text-xs font-bold uppercase tracking-widest">
+                    <p className="text-neutral-400 dark:text-neutral-500 text-xs font-bold uppercase tracking-widest">
                       Reminders
                     </p>
-                    <p className="text-xl font-black mt-1">
+                    <p className="text-xl font-black mt-1 text-neutral-900 dark:text-neutral-100">
                       {Notification.permission === "granted"
                         ? "Enabled"
                         : "Disabled"}
@@ -873,50 +938,52 @@ export default function App() {
                     {Notification.permission !== "granted" && (
                       <button
                         onClick={requestNotificationPermission}
-                        className="text-[10px] font-black text-indigo-600 uppercase mt-2 hover:underline"
+                        className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase mt-2 hover:underline"
                       >
                         Enable Alerts
                       </button>
                     )}
                   </div>
-                  <div className="bg-white p-6 rounded-3xl border border-neutral-100 shadow-sm">
-                    <div className="w-10 h-10 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center mb-4">
+                  <div className="bg-white dark:bg-neutral-900 p-6 rounded-3xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
+                    <div className="w-10 h-10 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 rounded-xl flex items-center justify-center mb-4">
                       <Clock size={20} />
                     </div>
-                    <p className="text-neutral-400 text-xs font-bold uppercase tracking-widest">
+                    <p className="text-neutral-400 dark:text-neutral-500 text-xs font-bold uppercase tracking-widest">
                       Week Focus
                     </p>
-                    <p className="text-2xl font-black mt-1">Academics</p>
+                    <p className="text-2xl font-black mt-1 text-neutral-900 dark:text-neutral-100">
+                      Academics
+                    </p>
                   </div>
 
                   {/* Weekly Actions Statistics Card */}
-                  <div className="col-span-1 sm:col-span-3 bg-white border border-neutral-200 p-8 rounded-[2.5rem] shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col gap-6">
+                  <div className="col-span-1 sm:col-span-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-8 rounded-[2.5rem] shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col gap-6">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                       <div>
                         <div className="flex items-center gap-2">
-                          <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+                          <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center">
                             <BarChart3 size={20} />
                           </div>
-                          <h3 className="text-xl font-black text-neutral-900">
+                          <h3 className="text-xl font-black text-neutral-900 dark:text-neutral-50">
                             Weekly Time Distribution
                           </h3>
                         </div>
-                        <p className="text-neutral-500 text-sm mt-1">
+                        <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">
                           Real-time statistics based entirely on your weekly
                           life planner events.
                         </p>
                       </div>
 
                       {totalWeeklyMinutes > 0 && (
-                        <div className="bg-indigo-50 border border-indigo-100 rounded-2xl px-5 py-3 flex items-center gap-3 shrink-0">
-                          <div className="text-indigo-600">
+                        <div className="bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/50 rounded-2xl px-5 py-3 flex items-center gap-3 shrink-0">
+                          <div className="text-indigo-600 dark:text-indigo-400">
                             <Clock size={24} />
                           </div>
                           <div>
-                            <span className="text-[10px] uppercase font-black text-neutral-400 tracking-wider leading-none block">
+                            <span className="text-[10px] uppercase font-black text-neutral-400 dark:text-neutral-500 tracking-wider leading-none block">
                               Total Scheduled
                             </span>
-                            <span className="font-mono font-black text-lg text-indigo-600 leading-none">
+                            <span className="font-mono font-black text-lg text-indigo-600 dark:text-indigo-400 leading-none">
                               {Math.round((totalWeeklyMinutes / 60) * 10) / 10}h
                             </span>
                           </div>
@@ -924,18 +991,18 @@ export default function App() {
                       )}
                     </div>
 
-                    <div className="h-px bg-neutral-100" />
+                    <div className="h-px bg-neutral-100 dark:bg-neutral-800" />
 
                     {weeklyActionStats.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-8 text-center border-2 border-dashed border-neutral-100 rounded-3xl p-6 bg-neutral-50/50">
+                      <div className="flex flex-col items-center justify-center py-8 text-center border-2 border-dashed border-neutral-100 dark:border-neutral-800 rounded-3xl p-6 bg-neutral-50/50 dark:bg-neutral-950/30">
                         <CalendarDays
-                          className="text-neutral-300 mb-3"
+                          className="text-neutral-300 dark:text-neutral-700 mb-3"
                           size={40}
                         />
-                        <h4 className="font-bold text-neutral-700">
+                        <h4 className="font-bold text-neutral-700 dark:text-neutral-300">
                           No activities scheduled yet
                         </h4>
-                        <p className="text-neutral-400 text-xs max-w-sm mt-1">
+                        <p className="text-neutral-400 dark:text-neutral-500 text-xs max-w-sm mt-1">
                           Add some lectures, labs, or planner events (like
                           Sleep, Study, Work) to see your weekly time breakdown!
                         </p>
@@ -952,7 +1019,7 @@ export default function App() {
                           return (
                             <div
                               key={item.name}
-                              className="flex flex-col gap-2 p-3 rounded-2xl hover:bg-neutral-50 transition-all border border-transparent hover:border-neutral-100"
+                              className="flex flex-col gap-2 p-3 rounded-2xl hover:bg-neutral-50 dark:hover:bg-neutral-800/40 transition-all border border-transparent hover:border-neutral-100 dark:hover:border-neutral-800/60"
                             >
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2.5 min-w-0">
@@ -960,25 +1027,25 @@ export default function App() {
                                     className={`w-3 h-3 rounded-full ${item.color} shrink-0`}
                                   />
                                   <span
-                                    className="font-bold text-sm text-neutral-800 truncate"
+                                    className="font-bold text-sm text-neutral-800 dark:text-neutral-200 truncate"
                                     title={item.name}
                                   >
                                     {item.name}
                                   </span>
-                                  <span className="text-[9px] px-2 py-0.5 bg-neutral-100 text-neutral-500 rounded-full uppercase font-black tracking-wider shrink-0">
+                                  <span className="text-[9px] px-2 py-0.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 rounded-full uppercase font-black tracking-wider shrink-0">
                                     {item.type}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
-                                  <span className="font-mono text-sm font-black text-neutral-900">
+                                  <span className="font-mono text-sm font-black text-neutral-900 dark:text-neutral-100">
                                     {item.hours}h
                                   </span>
-                                  <span className="text-xs text-neutral-400 font-bold">
+                                  <span className="text-xs text-neutral-400 dark:text-neutral-500 font-bold">
                                     ({percentage}%)
                                   </span>
                                 </div>
                               </div>
-                              <div className="w-full bg-neutral-100 h-2.5 rounded-full overflow-hidden">
+                              <div className="w-full bg-neutral-100 dark:bg-neutral-800 h-2.5 rounded-full overflow-hidden">
                                 <motion.div
                                   initial={{ width: 0 }}
                                   animate={{ width: `${percentage}%` }}
@@ -1005,26 +1072,26 @@ export default function App() {
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.98 }}
-                className="bg-white rounded-[2.5rem] border border-neutral-200 shadow-2xl overflow-hidden print:shadow-none print:border-none"
+                className="bg-white dark:bg-neutral-900 rounded-[2.5rem] border border-neutral-200 dark:border-neutral-800 shadow-2xl overflow-hidden print:shadow-none print:border-none"
                 id="timetable-to-print"
               >
                 <div className="overflow-x-auto print:overflow-visible">
                   <div className="min-w-[1000px] grid grid-cols-[80px_repeat(5,1fr)] print:min-w-0">
-                    <div className="border-b border-r border-neutral-100 bg-neutral-50/50"></div>
+                    <div className="border-b border-r border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-950/40"></div>
                     {CLASS_DAYS.map((day) => (
                       <div
                         key={day}
-                        className="py-5 text-center border-b border-neutral-100 font-black text-xs uppercase tracking-widest bg-neutral-50/50 text-neutral-400"
+                        className="py-5 text-center border-b border-neutral-100 dark:border-neutral-800 font-black text-xs uppercase tracking-widest bg-neutral-50/50 dark:bg-neutral-950/40 text-neutral-400 dark:text-neutral-500"
                       >
                         {day}
                       </div>
                     ))}
 
-                    <div className="border-r border-neutral-100 relative h-[840px] bg-neutral-50/20">
+                    <div className="border-r border-neutral-100 dark:border-neutral-800 relative h-[840px] bg-neutral-50/20 dark:bg-neutral-950/20">
                       {hoursClasses.map((hour) => (
                         <div
                           key={hour}
-                          className="absolute w-full text-right pr-4 font-mono text-[10px] text-neutral-300 font-bold"
+                          className="absolute w-full text-right pr-4 font-mono text-[10px] text-neutral-300 dark:text-neutral-600 font-bold"
                           style={{
                             top: `${(hour - startHourClasses) * 60 + 10}px`,
                           }}
@@ -1047,7 +1114,7 @@ export default function App() {
                     {CLASS_DAYS.map((day) => (
                       <div
                         key={day}
-                        className="relative h-[840px] border-r last:border-r-0 border-neutral-100 bg-grid-pattern"
+                        className="relative h-[840px] border-r last:border-r-0 border-neutral-100 dark:border-neutral-800 bg-grid-pattern"
                       >
                         {/* Day Column Time Indicator */}
                         {day === currentDay &&
@@ -1059,13 +1126,13 @@ export default function App() {
                                 top: `${minutesToPosition(currentMinutes, startHourClasses)}px`,
                               }}
                             >
-                              <div className="absolute -top-1.5 -left-1 w-3 h-3 bg-indigo-500 rounded-full border-2 border-white shadow-sm" />
+                              <div className="absolute -top-1.5 -left-1 w-3 h-3 bg-indigo-500 rounded-full border-2 border-white dark:border-neutral-900 shadow-sm" />
                             </div>
                           )}
                         {hoursClasses.map((hour) => (
                           <div
                             key={hour}
-                            className="absolute w-full h-[1px] bg-neutral-50"
+                            className="absolute w-full h-[1px] bg-neutral-50 dark:bg-neutral-800/40"
                             style={{
                               top: `${(hour - startHourClasses) * 60}px`,
                             }}
@@ -1152,25 +1219,25 @@ export default function App() {
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.98 }}
-                className="bg-white rounded-[2.5rem] border border-neutral-200 shadow-2xl overflow-hidden print:shadow-none print:border-none"
+                className="bg-white dark:bg-neutral-900 rounded-[2.5rem] border border-neutral-200 dark:border-neutral-800 shadow-2xl overflow-hidden print:shadow-none print:border-none"
               >
                 <div className="overflow-x-auto print:overflow-visible">
                   <div className="min-w-[1400px] grid grid-cols-[80px_repeat(7,1fr)] print:min-w-0">
-                    <div className="border-b border-r border-neutral-100 bg-neutral-50/50"></div>
+                    <div className="border-b border-r border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-950/40"></div>
                     {FULL_WEEK_DAYS.map((day) => (
                       <div
                         key={day}
-                        className="py-5 text-center border-b border-neutral-100 font-black text-[10px] uppercase tracking-widest bg-neutral-50/50 text-neutral-400"
+                        className="py-5 text-center border-b border-neutral-100 dark:border-neutral-800 font-black text-[10px] uppercase tracking-widest bg-neutral-50/50 dark:bg-neutral-950/40 text-neutral-400 dark:text-neutral-500"
                       >
                         {day}
                       </div>
                     ))}
 
-                    <div className="border-r border-neutral-100 relative h-[1080px] bg-neutral-50/20">
+                    <div className="border-r border-neutral-100 dark:border-neutral-800 relative h-[1080px] bg-neutral-50/20 dark:bg-neutral-950/20">
                       {hoursPlanner.map((hour) => (
                         <div
                           key={hour}
-                          className="absolute w-full text-right pr-4 font-mono text-[10px] text-neutral-300 font-bold"
+                          className="absolute w-full text-right pr-4 font-mono text-[10px] text-neutral-300 dark:text-neutral-600 font-bold"
                           style={{
                             top: `${(hour - startHourPlanner) * 60 + 10}px`,
                           }}
@@ -1193,7 +1260,7 @@ export default function App() {
                     {FULL_WEEK_DAYS.map((day) => (
                       <div
                         key={day}
-                        className="relative h-[1080px] border-r last:border-r-0 border-neutral-100 bg-grid-pattern"
+                        className="relative h-[1080px] border-r last:border-r-0 border-neutral-100 dark:border-neutral-800 bg-grid-pattern"
                       >
                         {/* Day Column Time Indicator */}
                         {day === currentDay &&
@@ -1205,13 +1272,13 @@ export default function App() {
                                 top: `${minutesToPosition(currentMinutes, startHourPlanner)}px`,
                               }}
                             >
-                              <div className="absolute -top-1.5 -left-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white shadow-sm" />
+                              <div className="absolute -top-1.5 -left-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white dark:border-neutral-900 shadow-sm" />
                             </div>
                           )}
                         {hoursPlanner.map((hour) => (
                           <div
                             key={hour}
-                            className="absolute w-full h-[1px] bg-neutral-50"
+                            className="absolute w-full h-[1px] bg-neutral-50 dark:bg-neutral-800/40"
                             style={{
                               top: `${(hour - startHourPlanner) * 60}px`,
                             }}
@@ -1298,7 +1365,7 @@ export default function App() {
               initial={{ y: 100, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 100, opacity: 0 }}
-              className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[60] bg-white border border-neutral-200 pl-6 pr-4 py-3 rounded-[2rem] shadow-2xl flex items-center gap-6 sm:bottom-8"
+              className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[60] bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 pl-6 pr-4 py-3 rounded-[2rem] shadow-2xl flex items-center gap-6 sm:bottom-8 transition-all duration-200"
             >
               <div className="flex items-center gap-4">
                 <div
@@ -1307,30 +1374,30 @@ export default function App() {
                   <Clock size={20} />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+                  <span className="text-[10px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
                     Active now
                   </span>
-                  <span className="font-bold text-sm truncate max-w-[150px]">
+                  <span className="font-bold text-sm truncate max-w-[150px] text-neutral-900 dark:text-neutral-100">
                     {activeEvent.title}
                   </span>
                 </div>
               </div>
 
-              <div className="h-8 w-px bg-neutral-100" />
+              <div className="h-8 w-px bg-neutral-100 dark:bg-neutral-800" />
 
               <div className="flex items-center gap-4">
                 <div className="flex flex-col items-end">
-                  <span className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+                  <span className="text-[10px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
                     Remaining
                   </span>
-                  <span className="font-mono font-black text-lg text-indigo-600 tabular-nums leading-none mt-0.5">
+                  <span className="font-mono font-black text-lg text-indigo-600 dark:text-indigo-400 tabular-nums leading-none mt-0.5">
                     {timeLeft?.formatted}
                   </span>
                 </div>
 
                 <button
                   onClick={togglePiP}
-                  className={`p-3 rounded-2xl transition-all ${pipWindow ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200" : "bg-neutral-50 text-neutral-400 hover:bg-neutral-100"}`}
+                  className={`p-3 rounded-2xl transition-all ${pipWindow ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none" : "bg-neutral-50 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700"}`}
                   title="Pop-out Player"
                 >
                   <ExternalLink size={18} />
@@ -1427,10 +1494,10 @@ export default function App() {
               initial={{ opacity: 0, y: 50, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 50, scale: 0.95 }}
-              className="relative w-full max-w-xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden"
+              className="relative w-full max-w-xl bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-[2.5rem] shadow-2xl overflow-hidden"
             >
-              <div className="px-8 py-6 border-b border-neutral-100 flex justify-between items-center bg-white">
-                <h2 className="text-2xl font-black">
+              <div className="px-8 py-6 border-b border-neutral-100 dark:border-neutral-800 flex justify-between items-center bg-white dark:bg-neutral-900">
+                <h2 className="text-2xl font-black text-neutral-900 dark:text-neutral-50">
                   {view === "classes"
                     ? editingId
                       ? "Edit Class"
@@ -1441,7 +1508,7 @@ export default function App() {
                 </h2>
                 <button
                   onClick={resetForm}
-                  className="p-3 hover:bg-neutral-100 rounded-full transition-colors text-neutral-500"
+                  className="p-3 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-full transition-colors text-neutral-500 dark:text-neutral-400"
                 >
                   <X size={24} />
                 </button>
@@ -1456,13 +1523,13 @@ export default function App() {
                 {view === "classes" ? (
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">
+                      <label className="block text-[10px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-2">
                         Subject Name
                       </label>
                       <input
                         required
                         type="text"
-                        className="w-full bg-neutral-50 px-6 py-4 rounded-2xl border border-neutral-100 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 transition-all outline-none font-bold"
+                        className="w-full bg-neutral-50 dark:bg-neutral-950 text-neutral-800 dark:text-neutral-200 px-6 py-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 focus:bg-white dark:focus:bg-neutral-900 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 dark:focus:ring-indigo-950/40 transition-all outline-none font-bold"
                         value={newClass.subject}
                         onChange={(e) =>
                           setNewClass({ ...newClass, subject: e.target.value })
@@ -1470,7 +1537,7 @@ export default function App() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">
+                      <label className="block text-[10px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-2">
                         Days {!editingId && "(Select multiple to repeat)"}
                       </label>
                       <div className="flex flex-wrap gap-2">
@@ -1489,7 +1556,7 @@ export default function App() {
                                   setNewClass({ ...newClass, days });
                               }
                             }}
-                            className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase transition-all border ${newClass.days.includes(day) ? "bg-indigo-600 border-indigo-600 text-white shadow-md" : "bg-neutral-50 border-neutral-100 text-neutral-400"}`}
+                            className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase transition-all border ${newClass.days.includes(day) ? "bg-indigo-600 border-indigo-600 text-white shadow-md" : "bg-neutral-50 dark:bg-neutral-950 border-neutral-100 dark:border-neutral-800 text-neutral-400 dark:text-neutral-500"}`}
                           >
                             {day.slice(0, 3)}
                           </button>
@@ -1498,7 +1565,7 @@ export default function App() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">
+                        <label className="block text-[10px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-2">
                           Theme
                         </label>
                         <div className="flex flex-wrap gap-2 pt-2">
@@ -1518,7 +1585,7 @@ export default function App() {
                         <input
                           required
                           type="time"
-                          className="bg-neutral-50 px-6 py-4 rounded-2xl border border-neutral-100 outline-none font-bold text-sm"
+                          className="bg-neutral-50 dark:bg-neutral-950 text-neutral-800 dark:text-neutral-200 px-6 py-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 outline-none font-bold text-sm"
                           value={newClass.startTime}
                           onChange={(e) =>
                             setNewClass({
@@ -1530,7 +1597,7 @@ export default function App() {
                         <input
                           required
                           type="time"
-                          className="bg-neutral-50 px-6 py-4 rounded-2xl border border-neutral-100 outline-none font-bold text-sm"
+                          className="bg-neutral-50 dark:bg-neutral-950 text-neutral-800 dark:text-neutral-200 px-6 py-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 outline-none font-bold text-sm"
                           value={newClass.endTime}
                           onChange={(e) =>
                             setNewClass({
@@ -1544,7 +1611,7 @@ export default function App() {
                     <input
                       type="text"
                       placeholder="Location (Optional)"
-                      className="w-full bg-neutral-50 px-6 py-4 rounded-2xl border border-neutral-100 outline-none font-bold"
+                      className="w-full bg-neutral-50 dark:bg-neutral-950 text-neutral-800 dark:text-neutral-200 px-6 py-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 outline-none font-bold"
                       value={newClass.location}
                       onChange={(e) =>
                         setNewClass({ ...newClass, location: e.target.value })
@@ -1554,13 +1621,13 @@ export default function App() {
                 ) : (
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">
+                      <label className="block text-[10px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-2">
                         Event Title
                       </label>
                       <input
                         required
                         type="text"
-                        className="w-full bg-neutral-50 px-6 py-4 rounded-2xl border border-neutral-100 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 transition-all outline-none font-bold"
+                        className="w-full bg-neutral-50 dark:bg-neutral-950 text-neutral-800 dark:text-neutral-200 px-6 py-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 focus:bg-white dark:focus:bg-neutral-900 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 dark:focus:ring-emerald-950/40 transition-all outline-none font-bold"
                         value={newPlannerEvent.title}
                         onChange={(e) =>
                           setNewPlannerEvent({
@@ -1571,7 +1638,7 @@ export default function App() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">
+                      <label className="block text-[10px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-2">
                         Days {!editingId && "(Select multiple to repeat)"}
                       </label>
                       <div className="flex flex-wrap gap-2">
@@ -1598,7 +1665,7 @@ export default function App() {
                                   });
                               }
                             }}
-                            className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase transition-all border ${newPlannerEvent.days.includes(day) ? "bg-emerald-600 border-emerald-600 text-white shadow-md" : "bg-neutral-50 border-neutral-100 text-neutral-400"}`}
+                            className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase transition-all border ${newPlannerEvent.days.includes(day) ? "bg-emerald-600 border-emerald-600 text-white shadow-md" : "bg-neutral-50 dark:bg-neutral-950 border-neutral-100 dark:border-neutral-800 text-neutral-400 dark:text-neutral-500"}`}
                           >
                             {day.slice(0, 3)}
                           </button>
@@ -1607,11 +1674,11 @@ export default function App() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">
+                        <label className="block text-[10px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-2">
                           Category
                         </label>
                         <select
-                          className="w-full bg-neutral-50 px-6 py-4 rounded-2xl border border-neutral-100 outline-none font-bold capitalize"
+                          className="w-full bg-neutral-50 dark:bg-neutral-950 text-neutral-800 dark:text-neutral-200 px-6 py-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 outline-none font-bold capitalize"
                           value={newPlannerEvent.category}
                           onChange={(e) => {
                             const cat = e.target
@@ -1627,6 +1694,7 @@ export default function App() {
                             <option
                               key={cat}
                               value={cat}
+                              className="bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200"
                             >
                               {cat}
                             </option>
@@ -1637,7 +1705,7 @@ export default function App() {
                         <input
                           required
                           type="time"
-                          className="bg-neutral-50 px-6 py-4 rounded-2xl border border-neutral-100 outline-none font-bold text-sm"
+                          className="bg-neutral-50 dark:bg-neutral-950 text-neutral-800 dark:text-neutral-200 px-6 py-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 outline-none font-bold text-sm"
                           value={newPlannerEvent.startTime}
                           onChange={(e) =>
                             setNewPlannerEvent({
@@ -1649,7 +1717,7 @@ export default function App() {
                         <input
                           required
                           type="time"
-                          className="bg-neutral-50 px-6 py-4 rounded-2xl border border-neutral-100 outline-none font-bold text-sm"
+                          className="bg-neutral-50 dark:bg-neutral-950 text-neutral-800 dark:text-neutral-200 px-6 py-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 outline-none font-bold text-sm"
                           value={newPlannerEvent.endTime}
                           onChange={(e) =>
                             setNewPlannerEvent({
